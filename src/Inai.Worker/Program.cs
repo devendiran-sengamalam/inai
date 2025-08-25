@@ -1,7 +1,15 @@
 using Inai.Worker;
+using Inai.Worker.Data;
+using Microsoft.EntityFrameworkCore;
 
-var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<Worker>();
+IHost host = Host.CreateDefaultBuilder(args)
+    .ConfigureServices((context, services) =>
+    {
+        services.AddDbContext<InaiDbContext>(options =>
+            options.UseSqlite(context.Configuration.GetConnectionString("DefaultConnection")));
 
-var host = builder.Build();
-host.Run();
+        services.AddHostedService<ReminderWorker>();
+    })
+    .Build();
+
+await host.RunAsync();
