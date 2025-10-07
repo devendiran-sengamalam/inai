@@ -3,49 +3,51 @@ using Inai.Api.Endpoints;
 using Inai.Api.Services;
 using Inai.Core.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc; 
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add DbContext with SQLite
 builder.Services.AddDbContext<InaiDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite("Data Source=inai.db"));
 
-// Add SignalR
-builder.Services.AddSignalR();
-builder.Services.AddScoped<TaskService>();
+builder.Services.AddScoped<TaskService>();   
 builder.Services.AddScoped<ReminderService>();
 
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-app.MapGet("/tasks/{userId:guid}", async (Guid userId, TaskService service) =>
+if (app.Environment.IsDevelopment())
 {
-    return Results.Ok(await service.GetTasksAsync(userId));
-});
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
-app.MapGet("/task/{id:guid}", async (Guid id, TaskService service) =>
-{
-    var task = await service.GetTaskAsync(id);
-    return task is null ? Results.NotFound() : Results.Ok(task);
-});
+app.MapGet("/", () => "Inai API running!");
 
-app.MapPost("/task", async (TaskItem task, TaskService service) =>
+// ---------------- TASK ENDPOINTS ----------------
+
+app.MapGet("/tasks/{userId:guid}", async (Guid userId, [FromServices] TaskService service) =>
+    Results.Ok(await service.GetTasksAsync(userId)));
+
+app.MapGet("/task/{id:guid}", async (Guid id, [FromServices] TaskService service) =>
+    await service.GetTaskAsync(id) is TaskItem t ? Results.Ok(t) : Results.NotFound());
+
+app.MapPost("/task", async ([FromBody] TaskItem task, [FromServices] TaskService service) =>
 {
     var created = await service.AddTaskAsync(task);
     return Results.Created($"/task/{created.Id}", created);
 });
 
-app.MapPut("/task/{id:guid}", async (Guid id, TaskItem updated, TaskService service) =>
-{
-    var task = await service.UpdateTaskAsync(id, updated);
-    return task is null ? Results.NotFound() : Results.Ok(task);
-});
+app.MapPut("/task/{id:guid}", async (Guid id, [FromBody] TaskItem updated, [FromServices] TaskService service) =>
+    await service.UpdateTaskAsync(id, updated) is TaskItem t ? Results.Ok(t) : Results.NotFound());
 
-app.MapDelete("/task/{id:guid}", async (Guid id, TaskService service) =>
-{
-    return await service.DeleteTaskAsync(id) ? Results.Ok() : Results.NotFound();
-});
+app.MapDelete("/task/{id:guid}", async (Guid id, [FromServices] TaskService service) =>
+    await service.DeleteTaskAsync(id) ? Results.Ok() : Results.NotFound());
+
+// ---------------- REMINDER ENDPOINTS ----------------
 app.MapGroup("/api/reminders")
-    .MapReminders();
+   .MapReminders();
 
 app.Run();

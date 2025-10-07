@@ -11,14 +11,14 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Inai.Api.Migrations
 {
     [DbContext(typeof(InaiDbContext))]
-    [Migration("20250824165229_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20251006122738_InitTasksAndReminders")]
+    partial class InitTasksAndReminders
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.8");
+            modelBuilder.HasAnnotation("ProductVersion", "9.0.9");
 
             modelBuilder.Entity("Inai.Core.Models.Reminder", b =>
                 {
@@ -28,6 +28,9 @@ namespace Inai.Api.Migrations
 
                     b.Property<bool>("IsSent")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Message")
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("RemindAt")
                         .HasColumnType("TEXT");
@@ -48,15 +51,17 @@ namespace Inai.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Description")
-                        .IsRequired()
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("DueDate")
+                    b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("RemindAt")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -67,37 +72,13 @@ namespace Inai.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
-
                     b.ToTable("Tasks");
-                });
-
-            modelBuilder.Entity("Inai.Core.Models.User", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("Inai.Core.Models.Reminder", b =>
                 {
                     b.HasOne("Inai.Core.Models.TaskItem", "TaskItem")
-                        .WithMany()
+                        .WithMany("Reminders")
                         .HasForeignKey("TaskItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -107,13 +88,7 @@ namespace Inai.Api.Migrations
 
             modelBuilder.Entity("Inai.Core.Models.TaskItem", b =>
                 {
-                    b.HasOne("Inai.Core.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
+                    b.Navigation("Reminders");
                 });
 #pragma warning restore 612, 618
         }

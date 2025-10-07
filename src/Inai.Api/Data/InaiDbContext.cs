@@ -1,28 +1,27 @@
-﻿using Inai.Core.Models;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using Inai.Core.Models;
 
-namespace Inai.Api.Data;
-
-public class InaiDbContext : DbContext
+namespace Inai.Api.Data
 {
-    public InaiDbContext(DbContextOptions<InaiDbContext> options) : base(options) { }
-
-    public DbSet<User> Users => Set<User>();
-    public DbSet<TaskItem> Tasks => Set<TaskItem>();
-    public DbSet<Reminder> Reminders => Set<Reminder>();
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public class InaiDbContext : DbContext
     {
-        base.OnModelCreating(modelBuilder);
+        public InaiDbContext(DbContextOptions<InaiDbContext> options) : base(options)
+        {
+        }
 
-        modelBuilder.Entity<User>()
-            .HasMany<TaskItem>()
-            .WithOne(t => t.User!)
-            .HasForeignKey(t => t.UserId);
+        public DbSet<TaskItem> Tasks { get; set; } = null!;
+        public DbSet<Reminder> Reminders { get; set; } = null!;
 
-        modelBuilder.Entity<TaskItem>()
-            .HasMany<Reminder>()
-            .WithOne(r => r.TaskItem!)
-            .HasForeignKey(r => r.TaskItemId);
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Configure one-to-many relationship
+            modelBuilder.Entity<Reminder>()
+                .HasOne(r => r.TaskItem)
+                .WithMany(t => t.Reminders)
+                .HasForeignKey(r => r.TaskItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+        }
     }
 }
