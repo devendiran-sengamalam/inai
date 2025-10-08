@@ -5,26 +5,18 @@ namespace Inai.Api.Endpoints;
 
 public static class ReminderEndpoints
 {
-    public static RouteGroupBuilder MapReminders(this RouteGroupBuilder group)
+    public static void MapReminders(this WebApplication app)
     {
-        group.MapGet("/{taskId:guid}", async (ReminderService service, Guid taskId) =>
+        app.MapGet("/reminders/{taskId:guid}", async (Guid taskId, ReminderService service) =>
             Results.Ok(await service.GetRemindersAsync(taskId)));
 
-        group.MapGet("/detail/{id:guid}", async (ReminderService service, Guid id) =>
-            await service.GetReminderAsync(id) is Reminder r ? Results.Ok(r) : Results.NotFound());
-
-        group.MapPost("/", async (ReminderService service, Reminder reminder) =>
+        app.MapPost("/reminder", async (Reminder reminder, ReminderService service) =>
         {
-            var created = await service.CreateReminderAsync(reminder);
-            return Results.Created($"/api/reminders/detail/{created.Id}", created);
+            var created = await service.AddReminderAsync(reminder);
+            return Results.Created($"/reminder/{created.Id}", created);
         });
 
-        group.MapPut("/{id:guid}", async (ReminderService service, Guid id, Reminder input) =>
-            await service.UpdateReminderAsync(id, input) is Reminder r ? Results.Ok(r) : Results.NotFound());
-
-        group.MapDelete("/{id:guid}", async (ReminderService service, Guid id) =>
-            await service.DeleteReminderAsync(id) ? Results.NoContent() : Results.NotFound());
-
-        return group;
+        app.MapDelete("/reminder/{id:guid}", async (Guid id, ReminderService service) =>
+            await service.DeleteReminderAsync(id) ? Results.Ok() : Results.NotFound());
     }
 }

@@ -1,5 +1,5 @@
-﻿using Inai.Core.Models;
-using Inai.Api.Data;
+﻿using Inai.Api.Data;
+using Inai.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inai.Api.Services;
@@ -7,49 +7,23 @@ namespace Inai.Api.Services;
 public class ReminderService
 {
     private readonly InaiDbContext _db;
+    public ReminderService(InaiDbContext db) => _db = db;
 
-    public ReminderService(InaiDbContext db)
-    {
-        _db = db;
-    }
+    public async Task<IEnumerable<Reminder>> GetRemindersAsync(Guid taskId) =>
+        await _db.Reminders.Where(r => r.TaskItemId == taskId).ToListAsync();
 
-    public async Task<List<Reminder>> GetRemindersAsync(Guid taskId)
-    {
-        return await _db.Reminders
-            .Where(r => r.TaskItemId == taskId)
-            .ToListAsync();
-    }
-
-    public async Task<Reminder?> GetReminderAsync(Guid id)
-    {
-        return await _db.Reminders.FindAsync(id);
-    }
-
-    public async Task<Reminder> CreateReminderAsync(Reminder reminder)
+    public async Task<Reminder> AddReminderAsync(Reminder reminder)
     {
         _db.Reminders.Add(reminder);
         await _db.SaveChangesAsync();
         return reminder;
     }
 
-    public async Task<Reminder?> UpdateReminderAsync(Guid id, Reminder input)
-    {
-        var existing = await _db.Reminders.FindAsync(id);
-        if (existing == null) return null;
-
-        existing.RemindAt = input.RemindAt;
-        existing.TaskItemId = input.TaskItemId;
-
-        await _db.SaveChangesAsync();
-        return existing;
-    }
-
     public async Task<bool> DeleteReminderAsync(Guid id)
     {
-        var existing = await _db.Reminders.FindAsync(id);
-        if (existing == null) return false;
-
-        _db.Reminders.Remove(existing);
+        var reminder = await _db.Reminders.FindAsync(id);
+        if (reminder == null) return false;
+        _db.Reminders.Remove(reminder);
         await _db.SaveChangesAsync();
         return true;
     }

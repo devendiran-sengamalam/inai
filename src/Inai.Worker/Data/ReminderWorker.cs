@@ -1,42 +1,41 @@
-﻿using Inai.Worker.Data;
+﻿using Inai.Api.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Inai.Worker
+namespace Inai.Worker;
+
+public class ReminderWorker : BackgroundService
 {
-    public class ReminderWorker : BackgroundService
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<ReminderWorker> _logger;
+
+    public ReminderWorker(IServiceScopeFactory scopeFactory, ILogger<ReminderWorker> logger)
     {
-        private readonly IServiceProvider _services;
-        private readonly ILogger<ReminderWorker> _logger;
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
 
-        public ReminderWorker(IServiceProvider services, ILogger<ReminderWorker> logger)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
         {
-            _services = services;
-            _logger = logger;
-        }
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<InaiDbContext>();
+            var now = DateTime.UtcNow;
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            while (!stoppingToken.IsCancellationRequested)
+            var reminders = await db.Reminders
+                .Where(r => !r.IsSent && r.RemindAt <= now)
+                .ToListAsync();
+
+            foreach (var r in reminders)
             {
-                using var scope = _services.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<InaiDbContext>();
-
-                var now = DateTime.UtcNow;
-                var dueReminders = await db.Reminders
-                    .Where(r => r.RemindAt <= now)
-                    .ToListAsync(stoppingToken);
-
-                foreach (var reminder in dueReminders)
-                {
-                    // TODO later: Send SignalR notification to App
-
-                    db.Reminders.Remove(reminder);
-                }
-
-                await db.SaveChangesAsync(stoppingToken);
-
-                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                // TODO: Send notification to user
+                _logger.LogInformation($"Reminder for Task {r.TaskItemId}: {r.Message}");
+                r.IsSent = true;
             }
+
+            await db.SaveChangesAsync();
+            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken); // check every 30s
         }
     }
 }
+

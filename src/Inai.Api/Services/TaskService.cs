@@ -1,5 +1,5 @@
-﻿using Inai.Core.Models;
-using Inai.Api.Data;
+﻿using Inai.Api.Data;
+using Inai.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inai.Api.Services;
@@ -7,27 +7,14 @@ namespace Inai.Api.Services;
 public class TaskService
 {
     private readonly InaiDbContext _db;
+    public TaskService(InaiDbContext db) => _db = db;
 
-    public TaskService(InaiDbContext db)
-    {
-        _db = db;
-    }
+    public async Task<IEnumerable<TaskItem>> GetTasksAsync(Guid userId) =>
+        await _db.Tasks.Include(t => t.Reminders).Where(t => t.UserId == userId).ToListAsync();
 
-    // Get all tasks for a user
-    public async Task<List<TaskItem>> GetTasksAsync(Guid userId)
-    {
-        return await _db.Tasks
-            .Where(t => t.UserId == userId)
-            .ToListAsync();
-    }
+    public async Task<TaskItem?> GetTaskAsync(Guid id) =>
+        await _db.Tasks.Include(t => t.Reminders).FirstOrDefaultAsync(t => t.Id == id);
 
-    // Get single task by ID
-    public async Task<TaskItem?> GetTaskAsync(Guid id)
-    {
-        return await _db.Tasks.FindAsync(id);
-    }
-
-    // Add new task
     public async Task<TaskItem> AddTaskAsync(TaskItem task)
     {
         _db.Tasks.Add(task);
@@ -35,27 +22,25 @@ public class TaskService
         return task;
     }
 
-    // Update task
-    public async Task<TaskItem?> UpdateTaskAsync(Guid id, TaskItem input)
+    public async Task<TaskItem?> UpdateTaskAsync(Guid id, TaskItem updated)
     {
-        var existing = await _db.Tasks.FindAsync(id);
-        if (existing == null) return null;
+        var task = await _db.Tasks.FindAsync(id);
+        if (task == null) return null;
 
-        existing.Title = input.Title;
-        existing.Description = input.Description;
-        existing.RemindAt = input.RemindAt;
+        task.Title = updated.Title;
+        task.Description = updated.Description;
+        task.IsCompleted = updated.IsCompleted;
+        task.RemindAt = updated.RemindAt;
 
         await _db.SaveChangesAsync();
-        return existing;
+        return task;
     }
 
-    // Delete task
     public async Task<bool> DeleteTaskAsync(Guid id)
     {
-        var existing = await _db.Tasks.FindAsync(id);
-        if (existing == null) return false;
-
-        _db.Tasks.Remove(existing);
+        var task = await _db.Tasks.FindAsync(id);
+        if (task == null) return false;
+        _db.Tasks.Remove(task);
         await _db.SaveChangesAsync();
         return true;
     }
